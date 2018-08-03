@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+</head>
+
+<body>
+
+    <script>
+        var config = {
+            type: Phaser.AUTO,
+            width: 1920,
+            height: 768,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 }
+                }
+            },
+            scene: {
+                preload: preload,
+                create: create,
+                update:update
+            }
+        };
+        var currentSec = 60;
+        var currentTime = currentSec;
+        var count = 0, countdown, info, data, scenes, dataIndex = 0, levelIndex = 0, correctCount = 0, successP, failP, overTitle;
+        var tmpArr = []
+        var game = new Phaser.Game(config);
+        var platforms;
+
+        var Meteorite = new Phaser.Class({
+
+            Extends: Phaser.Physics.Arcade.Sprite,
+
+            initialize:
+
+                function Meteorite(scene, x, y) {
+                    Phaser.Physics.Arcade.Sprite.call(this, scene)
+
+                    this.setTexture(data[dataIndex]);
+                    this.setData('A', data[dataIndex])
+
+                    this.setPosition(x, y)
+                    this.setOrigin(0);
+
+                    this.total = 0;
+                    this.particles = scene.add.particles('red');
+                    this.particles.setDepth(9)
+
+                    this.particles.rotation = 220
+                    this.emitter = this.particles.createEmitter({
+                        speed: 100,
+                        scale: { start: 1, end: 0 },
+                        blendMode: 'ADD'
+                    });
+                    scene.physics.world.enableBody(this, 0);
+
+                    this.setInteractive({ hitArea: 'circle' });
+                    this.setBounce(1, 1);
+                    // this.setCollideWorldBounds(true);
+                    this.setVelocity(10, 5)
+
+
+                    var tmp = this
+                    this.on('pointerdown', function (d, e) {
+                        if (tmp.getData('A') != data[levelIndex]) {
+                            tmp.setVelocity(tmp.body.velocity.x += 10, tmp.body.velocity.y += 50);
+                            scene.sound.play('error')
+                        } else {
+                            scene.sound.play('correct')
+                            correct(tmp, scene);
+                        }
+
+                    }, scene);
+                    scene.physics.add.collider(platforms, this, hitGround, null, this);
+
+                    scene.children.add(this);
+
+                    this.emitter.startFollow(this)
+                    this.setDepth(dataIndex + 1)
+                    dataIndex += 1
+                },
+
+
+        });
+        function preload() {
+            this.load.setBaseURL('./');
+
+            this.load.image('ground', 'img/platform.png');
+            this.load.image('red', 'img/red.png');
+            this.load.image('sky', 'img/space3.png');
+            this.load.image('logo', 'img/stone.png');
+            this.load.image('apple', 'img/apple.png');
+            this.load.image('mango', 'img/mango.png');
+            this.load.image('lemon', 'img/lemon.png');
+            this.load.image('banana', 'img/banana.png');
+            this.load.image('fish', 'img/fish.png');
+            this.load.image('person', 'img/person.png');
+            this.load.image('personSad', 'img/personSad.png');
+            this.load.image('star', 'img/star.png');
+            this.load.image('starEmpty', 'img/starEmpty.png');
+            this.load.image('audioBtn', 'img/audioBtn.png');
+
+            this.load.json('levelData', 'json/question.json');
+
+            this.load.audio('appleaudio', 'audio/apple.mp3');
+            this.load.audio('bananaaudio', 'audio/banana.mp3');
+            this.load.audio('mangoaudio', 'audio/mango.mp3');
+            this.load.audio('lemonaudio', 'audio/lemon.mp3');
+            this.load.audio('fishaudio', 'audio/fish.mp3');
+            this.load.audio('correct', 'audio/crrect_answer3.mp3');
+            this.load.audio('error', 'audio/blip03.mp3');
+            this.load.audio('victory', 'audio/victory.mp3');
+            this.load.audio('fail', 'audio/fail.mp3');
+            this.load.audio('destruction', 'audio/destruction1.mp3');
+
+
+
+        }
+
+        function create() {
+            this.add.image(950, 350, 'sky');
+            this.playBtn = this.add.sprite(40, 110, 'audioBtn').setScale(0.2).setInteractive();
+            this.playBtn.on('pointerdown', playTarget);
+            successP = this.add.image(900, 600, 'person').setScale(0.5).setDepth(2).setVisible(false)
+            failP = this.add.image(900, 600, 'personSad').setScale(0.5).setDepth(2).setVisible(false)
+
+            this.sound.add('appleaudio');
+            this.sound.add('bananaaudio');
+            this.sound.add('mangoaudio');
+            this.sound.add('lemonaudio');
+            this.sound.add('fishaudio');
+            this.sound.add('victory');
+            this.sound.add('fail');
+            this.sound.add('destruction');
+            platforms = this.physics.add.staticGroup();
+            scenes = this;
+            platforms.create(400, 736, 'ground').setScale(2).refreshBody();
+            platforms.create(1000, 736, 'ground').setScale(2).refreshBody();
+            platforms.create(1600, 736, 'ground').setScale(2).refreshBody();
+
+            timedEvent = this.time.addEvent({ delay: 1000, callback: countDown, callbackScope: this });
+            overTitle = this.add.text(800, 100, '', { fontSize: '64px', fill: '#fff' })
+            countdown = this.add.text(16, 16, 'Time: 60', { fontSize: '32px', fill: '#fff' });
+            info = this.add.text(16, 50, '關卡: ' + (levelIndex + 1), { fontSize: '32px', fill: '#fff' });
+
+            data = this.cache.json.get('levelData');
+
+            meteorites = [];
+
+            meteoritessTotal = data.length;
+            var am = getRNDposition()
+            console.log(am)
+            for (var i = 0; i < meteoritessTotal; i++) {
+
+                meteorites.push(new Meteorite(scenes, 300 + Phaser.Math.RND.between(100 + 200 * am[i] , 200 + 180 * am[i]), Phaser.Math.RND.between(-10, 30)));
+            }
+            this.sound.play(data[0] + 'audio')
+
+        }
+
+        function update() {
+            for (var i = 0; i < meteorites.length; i++) {
+                if (meteorites[i].x > 1920) {
+                    meteorites[i].x = -120
+                }
+
+            }
+        }
+        function getRNDposition() {
+            var a = [0, 1, 2, 3, 4, 5, 6, 7]
+            var output = []
+            for (var i = 0; i < data.length; i++) {
+                p = Phaser.Math.RND.between(0, 8)
+                if (a[p] != null) {
+                    output.push(p)
+                    a[p] = null
+                } else {
+                    for (var j = 0; j < 8; j++) {
+                        if (a[j] != null) {
+                            output.push(j)
+                            a[j] = null
+                            break;
+                        }
+                    }
+
+                }
+            }
+            return output
+
+        }
+    function hitGround(){
+        
+        game.sound.play('destruction');
+        gameOver()
+    }
+        function killSprite(sprite) {
+            sprite.particles.destroy();
+            sprite.disableBody(true, true);
+        }
+        function killAllSprite() {
+            for (var i = 0; i < meteorites.length; i++) {
+                meteorites[i].particles.destroy();
+                meteorites[i].disableBody(true, true);
+            }
+
+        }
+        function countDown() {
+            currentSec--;
+            count++;
+            timedEvent.reset({ delay: 1000, callback: countDown, callbackScope: this, repeat: 1 });
+            countdown.setText('Time: ' + currentSec);
+            if (count >= 60) {
+                currentSec = 60;
+                count = 0;
+                for (var i = 0; i < 5; i++) {
+                    meteorites[i].setVelocity(-100, 200)
+                }
+            }
+
+        };
+
+        function correct(met, scene) {
+
+            correctCount += 1
+            killSprite(met);
+            if (levelIndex + 1 < data.length) {
+
+                levelIndex += 1
+                scene.time.addEvent({ delay: 500, callback: next, callbackScope: scene, args: [met] });
+            } else {
+                gameOver();
+            }
+        }
+
+        function next() {
+            info.setText('關卡: ' + (levelIndex + 1));
+            game.sound.play(data[levelIndex] + 'audio');
+        }
+
+        function gameOver() {
+            killAllSprite();
+            timedEvent.destroy();
+            switch (correctCount) {
+                case 0:
+                    fail()
+                    drawStar(0)
+                    break;
+                case 1: case 2:
+                    success()
+                    drawStar(1)
+                    break;
+                case 3: case 4:
+                    success()
+                    drawStar(2)
+                    break;
+                default:
+                    success()
+                    drawStar(3)
+                    break;
+            }
+        }
+
+        function success() {
+            game.sound.play('victory')
+            successP.setVisible(true)
+            overTitle.setText('Clear')
+        }
+
+        function fail() {
+
+            game.sound.play('fail')
+            failP.setVisible(true)
+            overTitle.setText('Fail')
+        }
+
+        function drawStar(n) {
+            for (var i = 0; i < n; i++) {
+                scenes.add.image(700 + i * 200, 300, 'star')
+            }
+            for (var i = n; i < 3; i++) {
+
+                scenes.add.image(700 + i * 200, 300, 'starEmpty')
+            }
+        }
+        function playTarget() {
+            game.sound.play(data[levelIndex] + 'audio');
+        }
+    </script>
+
+</body>
+
+</html>
