@@ -10,8 +10,8 @@
     <script>
         var config = {
             type: Phaser.AUTO,
-            width: 1920,
-            height: 768,
+            width: window.innerWidth,
+            height: window.innerHeight,
             physics: {
                 default: 'arcade',
                 arcade: {
@@ -21,7 +21,7 @@
             scene: {
                 preload: preload,
                 create: create,
-                update:update
+                update: update
             }
         };
         var currentSec = 60;
@@ -30,6 +30,9 @@
         var tmpArr = []
         var game = new Phaser.Game(config);
         var platforms;
+
+        //螢幕縮放比例
+        var scaleW = window.innerWidth/1920, scaleH = window.innerHeight/768;
 
         var Meteorite = new Phaser.Class({
 
@@ -42,7 +45,7 @@
 
                     this.setTexture(data[dataIndex]);
                     this.setData('A', data[dataIndex])
-
+                    this.setScale(scaleW)
                     this.setPosition(x, y)
                     this.setOrigin(0);
 
@@ -51,9 +54,10 @@
                     this.particles.setDepth(9)
 
                     this.particles.rotation = 220
+                   
                     this.emitter = this.particles.createEmitter({
-                        speed: 100,
-                        scale: { start: 1, end: 0 },
+                        speed: 50,
+                        scale: { start: scaleW, end: 0 },
                         blendMode: 'ADD'
                     });
                     scene.physics.world.enableBody(this, 0);
@@ -89,6 +93,8 @@
         function preload() {
             this.load.setBaseURL('./');
 
+            this.load.json('levelData', 'json/question.json');
+
             this.load.image('ground', 'img/platform.png');
             this.load.image('red', 'img/red.png');
             this.load.image('sky', 'img/space3.png');
@@ -102,8 +108,6 @@
             this.load.image('star', 'img/star.png');
             this.load.image('starEmpty', 'img/starEmpty.png');
             this.load.image('audioBtn', 'img/audioBtn.png');
-
-            this.load.json('levelData', 'json/question.json');
 
             this.load.audio('appleaudio', 'audio/apple.mp3');
             this.load.audio('bananaaudio', 'audio/banana.mp3');
@@ -121,12 +125,21 @@
         }
 
         function create() {
-            this.add.image(950, 350, 'sky');
-            this.playBtn = this.add.sprite(40, 110, 'audioBtn').setScale(0.2).setInteractive();
-            this.playBtn.on('pointerdown', playTarget);
-            successP = this.add.image(900, 600, 'person').setScale(0.5).setDepth(2).setVisible(false)
-            failP = this.add.image(900, 600, 'personSad').setScale(0.5).setDepth(2).setVisible(false)
+            scenes = this;
+            //背景
+            this.background = this.add.image(window.innerWidth/2,window.innerHeight/2,'sky');
+            this.background.setSize(window.innerWidth,window.innerHeight)
 
+            //發音鈕
+            this.playBtn = this.add.sprite(40*scaleW, 110*scaleH, 'audioBtn').setScale(0.2*scaleW).setInteractive();
+            this.playBtn.on('pointerdown', playTarget);
+
+            //結束畫面
+            successP = this.add.image(900*scaleW, 600*scaleH, 'person').setScale(0.5*scaleW).setDepth(2).setVisible(false)
+            failP = this.add.image(900*scaleW, 600*scaleH, 'personSad').setScale(0.5*scaleW).setDepth(2).setVisible(false)
+            overTitle = this.add.text(800*scaleW, 100*scaleH, '', { fontSize: 64*scaleW + 'px', fill: '#fff' })
+
+            //載入音檔
             this.sound.add('appleaudio');
             this.sound.add('bananaaudio');
             this.sound.add('mangoaudio');
@@ -135,40 +148,51 @@
             this.sound.add('victory');
             this.sound.add('fail');
             this.sound.add('destruction');
+
+            //產生地板
             platforms = this.physics.add.staticGroup();
-            scenes = this;
-            platforms.create(400, 736, 'ground').setScale(2).refreshBody();
-            platforms.create(1000, 736, 'ground').setScale(2).refreshBody();
-            platforms.create(1600, 736, 'ground').setScale(2).refreshBody();
 
+            platforms.create(400*scaleW, 738*scaleH, 'ground').setScale(2*scaleW).refreshBody();
+            platforms.create(1000*scaleW, 738*scaleH, 'ground').setScale(2*scaleW).refreshBody();
+            platforms.create(1600*scaleW, 738*scaleH, 'ground').setScale(2*scaleW).refreshBody();
+
+            //計時
             timedEvent = this.time.addEvent({ delay: 1000, callback: countDown, callbackScope: this });
-            overTitle = this.add.text(800, 100, '', { fontSize: '64px', fill: '#fff' })
-            countdown = this.add.text(16, 16, 'Time: 60', { fontSize: '32px', fill: '#fff' });
-            info = this.add.text(16, 50, '關卡: ' + (levelIndex + 1), { fontSize: '32px', fill: '#fff' });
+            
+            //計時字及關卡資訊
+            countdown = this.add.text(16*scaleW, 16*scaleH, 'Time: 60', { fontSize: 32*scaleW+'px', fill: '#fff' });
+            info = this.add.text(16*scaleW, 50*scaleH, '關卡: ' + (levelIndex + 1), { fontSize:  32*scaleW+'px', fill: '#fff' });
 
+            //讀取關卡資料
             data = this.cache.json.get('levelData');
 
+            //產生隕石
             meteorites = [];
-
             meteoritessTotal = data.length;
-            var am = getRNDposition()
-            console.log(am)
-            for (var i = 0; i < meteoritessTotal; i++) {
 
-                meteorites.push(new Meteorite(scenes, 300 + Phaser.Math.RND.between(100 + 200 * am[i] , 200 + 180 * am[i]), Phaser.Math.RND.between(-10, 30)));
+            //產生隨機位置
+            var am = getRNDposition()
+
+            for (var i = 0; i < meteoritessTotal; i++) {
+                
+                meteorites.push(new Meteorite(scenes, (300 + Phaser.Math.RND.between(100 + 200 * am[i], 200 + 180 * am[i]))*scaleW, Phaser.Math.RND.between(-10, 30)*scaleH));
             }
+
+            //播放第一題
             this.sound.play(data[0] + 'audio')
 
         }
 
         function update() {
+            //超出螢幕時更新隕石位置自最左邊出現
             for (var i = 0; i < meteorites.length; i++) {
-                if (meteorites[i].x > 1920) {
-                    meteorites[i].x = -120
+                if (meteorites[i].x > 1920*scaleW) {
+                    meteorites[i].x = -120*scaleW
                 }
 
             }
         }
+
         function getRNDposition() {
             var a = [0, 1, 2, 3, 4, 5, 6, 7]
             var output = []
@@ -191,11 +215,12 @@
             return output
 
         }
-    function hitGround(){
+        //隕石落地
+        function hitGround() {
+            game.sound.play('destruction');
+            gameOver()
+        }
         
-        game.sound.play('destruction');
-        gameOver()
-    }
         function killSprite(sprite) {
             sprite.particles.destroy();
             sprite.disableBody(true, true);
@@ -207,6 +232,7 @@
             }
 
         }
+        //倒數事件
         function countDown() {
             currentSec--;
             count++;
@@ -221,7 +247,7 @@
             }
 
         };
-
+        //答對題目處理
         function correct(met, scene) {
 
             correctCount += 1
@@ -234,12 +260,12 @@
                 gameOver();
             }
         }
-
+        //下一題
         function next() {
             info.setText('關卡: ' + (levelIndex + 1));
             game.sound.play(data[levelIndex] + 'audio');
         }
-
+        //遊戲結束動作
         function gameOver() {
             killAllSprite();
             timedEvent.destroy();
@@ -262,29 +288,30 @@
                     break;
             }
         }
-
+        //成功過關
         function success() {
             game.sound.play('victory')
             successP.setVisible(true)
             overTitle.setText('Clear')
         }
-
+        //通關失敗
         function fail() {
 
             game.sound.play('fail')
             failP.setVisible(true)
             overTitle.setText('Fail')
         }
-
+        //畫出得到的星星
         function drawStar(n) {
             for (var i = 0; i < n; i++) {
-                scenes.add.image(700 + i * 200, 300, 'star')
+                scenes.add.image((700 + i * 200)*scaleW, 300*scaleH, 'star').setScale(scaleW)
             }
             for (var i = n; i < 3; i++) {
 
-                scenes.add.image(700 + i * 200, 300, 'starEmpty')
+                scenes.add.image((700 + i * 200)*scaleW, 300*scaleH, 'starEmpty').setScale(scaleW)
             }
         }
+        //播放當前題目
         function playTarget() {
             game.sound.play(data[levelIndex] + 'audio');
         }
