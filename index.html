@@ -51,9 +51,8 @@
 
                     this.total = 0;
                     this.particles = scene.add.particles('red');
-                    this.particles.setDepth(9)
-
-                    this.particles.rotation = 220
+                    this.particles.setDepth(1)
+                    this.particles.index = dataIndex
                    
                     this.emitter = this.particles.createEmitter({
                         speed: 50,
@@ -64,12 +63,12 @@
 
                     this.setInteractive({ hitArea: 'circle' });
                     this.setBounce(1, 1);
-                    // this.setCollideWorldBounds(true);
                     this.setVelocity(10, 5)
 
 
                     var tmp = this
                     this.on('pointerdown', function (d, e) {
+
                         if (tmp.getData('A') != data[levelIndex]) {
                             tmp.setVelocity(tmp.body.velocity.x += 10, tmp.body.velocity.y += 50);
                             scene.sound.play('error')
@@ -84,7 +83,7 @@
                     scene.children.add(this);
 
                     this.emitter.startFollow(this)
-                    this.setDepth(dataIndex + 1)
+                    // this.setDepth(dataIndex + 1)
                     dataIndex += 1
                 },
 
@@ -137,7 +136,7 @@
             //結束畫面
             successP = this.add.image(900*scaleW, 600*scaleH, 'person').setScale(0.5*scaleW).setDepth(2).setVisible(false)
             failP = this.add.image(900*scaleW, 600*scaleH, 'personSad').setScale(0.5*scaleW).setDepth(2).setVisible(false)
-            overTitle = this.add.text(800*scaleW, 100*scaleH, '', { fontSize: 64*scaleW + 'px', fill: '#fff' })
+            overTitle = this.add.text(800*scaleW, 100*scaleH, '', { fontSize: 64*scaleH + 'px', fill: '#fff' })
 
             //載入音檔
             this.sound.add('appleaudio');
@@ -160,8 +159,8 @@
             timedEvent = this.time.addEvent({ delay: 1000, callback: countDown, callbackScope: this });
             
             //計時字及關卡資訊
-            countdown = this.add.text(16*scaleW, 16*scaleH, 'Time: 60', { fontSize: 32*scaleW+'px', fill: '#fff' });
-            info = this.add.text(16*scaleW, 50*scaleH, '關卡: ' + (levelIndex + 1), { fontSize:  32*scaleW+'px', fill: '#fff' });
+            countdown = this.add.text(16*scaleW, 16*scaleH, 'Time: 60', { fontSize: 32*scaleH+'px', fill: '#fff' });
+            info = this.add.text(16*scaleW, 50*scaleH, '關卡: ' + (levelIndex + 1), { fontSize:  32*scaleH+'px', fill: '#fff' });
 
             //讀取關卡資料
             data = this.cache.json.get('levelData');
@@ -174,7 +173,7 @@
             var am = getRNDposition()
 
             for (var i = 0; i < meteoritessTotal; i++) {
-                
+
                 meteorites.push(new Meteorite(scenes, (300 + Phaser.Math.RND.between(100 + 200 * am[i], 200 + 180 * am[i]))*scaleW, Phaser.Math.RND.between(-10, 30)*scaleH));
             }
 
@@ -222,6 +221,7 @@
         }
         
         function killSprite(sprite) {
+            console.log(sprite.particles)
             sprite.particles.destroy();
             sprite.disableBody(true, true);
         }
